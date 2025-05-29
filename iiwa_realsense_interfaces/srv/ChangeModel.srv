@@ -1,0 +1,9 @@
+string task
+string model_name
+string model_format
+float32 confidence
+string device
+uint8 max_objects
+---
+bool status
+string message

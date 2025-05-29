@@ -1,0 +1,9 @@
+{
+    "name": "ros2-depth-camera",
+    "version": "1.0.0",
+    "builtin-baseline": "62c4a7ad6333ae50b31302c48cb3ca5712828b03",
+    "dependencies": ["realsense2", "pybind11", "nlohmann-json"],
+    "overrides": [
+        { "name": "realsense2", "version": "2.54.1" }
+    ]
+}

@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>iiwa_realsense_camera</name>
+  <version>0.0.0</version>
+  <description>TODO: Package description</description>
+  <maintainer email="grabardm@ml-dev.ru">daniell</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <depend>nlohmann_json</depend>
+  <depend>realsense2</depend>
+  <depend>rclcpp</depend>
+  <depend>OpenCV</depend>
+
+  <build_depend>iiwa_realsense_interfaces</build_depend>
+  <exec_depend>iiwa_realsense_interfaces</exec_depend>
+
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

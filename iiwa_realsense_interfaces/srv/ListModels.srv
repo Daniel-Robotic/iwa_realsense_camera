@@ -1,0 +1,5 @@
+# Request ─ пустой
+---
+bool      success          # true, если каталог найден
+string[]  models           # относительные пути: yolo8/pose/yolov8n-pose.pt …
+string    message          # диагностическая строка
