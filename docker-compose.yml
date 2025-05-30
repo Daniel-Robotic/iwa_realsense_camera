@@ -1,33 +1,31 @@
-version: "3.9"
-
 services:
   camera_handler:
     build:
-      context: .               # папка с Dockerfile
-      dockerfile: Dockerfile
-      args:
-        BASE_IMG: ${ULTRA_IMAGE:-ultralytics/ultralytics:8.3.146-cpu}
-        ROS_DISTRO: ${ROS_DISTRO:-humble}
-        VCPKG_TRIP: ${VCPKG_TRIP:-x64-linux}   # arm64-linux для Jetson
-    image: camera-handler:${ROS_DISTRO:-humble}
+      context: .
+      dockerfile: Dockerfile.x64
     container_name: camera-handler
     network_mode: host
     restart: unless-stopped
 
     # ── GPU / RealSense / привилегии ─────────────────────────────
-    runtime: nvidia               # для Jetson/дискретных GPU
+    runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - CUDA_LAUNCH_BLOCKING=1
-    privileged: true              # RealSense требует udev/usb
+    privileged: true
     devices:
-      - "/dev/video0:/dev/video12" # 0
-      - "/dev/video1:/dev/video13" # 1
-      - "/dev/video2:/dev/video14" # 2
-      - "/dev/video3:/dev/video15" # 3
-      - "/dev/video4:/dev/video16" # 4
-      - "/dev/video5:/dev/video17" # 5
+    # RealSense
+      - "/dev/video0:/dev/video0"
+      - "/dev/video1:/dev/video1"
+      - "/dev/video2:/dev/video2"
+      - "/dev/video3:/dev/video3"
+      - "/dev/video4:/dev/video4"
+      - "/dev/video5:/dev/video5"
+      # Lidar
+      - "/dev/video5:/dev/video6"
+      - "/dev/video5:/dev/video7"
+
       - "/dev/HID-SENSOR-2000e1.4.auto:/dev/HID-SENSOR-2000e1.4.auto"
       # Jetson DLA (необязательно)
       # - "/dev/nvhost-dla:/dev/nvhost-dla"

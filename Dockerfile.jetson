@@ -1,0 +1,94 @@
+FROM nvcr.io/nvidia/l4t-base:r35.4.1
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    TZ=Europe/Moscow \
+    CC=gcc-10 \
+    CXX=g++-10 \
+    VCPKG_FORCE_SYSTEM_BINARIES=1 \
+    VCPKG_DEFAULT_TRIPLET=arm64-linux \
+    PYTHONIOENCODING=utf-8 \
+    PYTHONUTF8=1 \
+    PATH="/vcpkg_dir/vcpkg:${PATH}"
+
+# Настройка зеркал и времени
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
+    sed -i 's|http://archive.ubuntu.com/ubuntu|http://mirror.yandex.ru/ubuntu|g' /etc/apt/sources.list && \
+    sed -i 's|http://security.ubuntu.com/ubuntu|http://mirror.yandex.ru/ubuntu|g' /etc/apt/sources.list
+
+# Установка зависимостей
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common \
+    tzdata \
+    curl \
+    gnupg2 \
+    lsb-release \
+    wget \
+    git \
+    unzip \
+    zip \
+    python3-pip \
+    python3-dev \
+    python3-venv \
+    build-essential \
+    cmake \
+    ninja-build \
+    gcc-10 \
+    g++-10 \
+    libglib2.0-0 \
+    libgl1-mesa-glx \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    pkg-config \
+    autoconf \
+    automake \
+    libtool \
+    m4 \
+    libudev-dev \
+    libopencv-dev \
+    && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 \
+    && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 100 \
+    && pip3 install "setuptools==58.2.0" "ultralytics==8.3.146" \
+    && rm -rf /var/lib/apt/lists/*
+
+
+# Установка vcpkg
+WORKDIR /vcpkg_dir
+COPY ./vcpkg.json /vcpkg_dir/ros_packages/vcpkg.json
+RUN git clone https://github.com/microsoft/vcpkg.git && \
+    ./vcpkg/bootstrap-vcpkg.sh -disableMetrics && \
+    vcpkg install --x-manifest-root=/vcpkg_dir/ros_packages && \
+    rm -rf /vcpkg_dir/vcpkg/buildtrees /vcpkg_dir/vcpkg/downloads
+
+# Установка ROS 2 Humble
+RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2.list && \
+    apt-get update && apt-get install -y --no-install-recommends --fix-missing \
+    ros-humble-ros-base \
+    ros-humble-rosidl-default-generators \
+    ros-humble-rosidl-default-runtime \
+    ros-humble-ament-cmake \
+    python3-colcon-common-extensions \
+    python3-argcomplete \
+    python3-ament-package \
+    python3-rosdep2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Установка исходников ROS2 проекта
+WORKDIR /ros2_ws/src
+COPY . /ros2_ws/src/
+
+# CMAKE путь к зависимостям vcpkg
+ENV CMAKE_PREFIX_PATH="/vcpkg_dir/ros_packages/vcpkg_installed/arm64-linux/share"
+
+# Сборка ROS2 пакетов
+WORKDIR /ros2_ws
+SHELL ["/bin/bash", "-c"]
+RUN source /opt/ros/humble/setup.bash && \
+    colcon build --merge-install \
+      --cmake-args -DCMAKE_TOOLCHAIN_FILE=/vcpkg_dir/vcpkg/scripts/buildsystems/vcpkg.cmake
+
+# CMD ["tail", "-f", "/dev/null"]
+CMD [ "bash", "-c", "source /ros2_ws/install/setup.bash && ros2 launch iiwa_realsense_camera camera_handler_launch.py" ] 
