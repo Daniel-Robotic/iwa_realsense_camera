@@ -6,6 +6,7 @@ from pathlib import Path
 
 import importlib.resources as pkg
 import numpy as np
+import torch
 
 TaskT = Literal["detect", "segment", "classify", "pose", "obb"]
 FamilyT = Literal["yolo8", "yolo11"]
@@ -50,25 +51,57 @@ def _resolve_model_path(task: TaskT,
     raise FileNotFoundError(f"No model files in {task_dir}")
 
 
-def _load(task: TaskT, model_path: Path):
+def _load(task: TaskT, model_path: Path, device: str = "cuda"):
     global _model, _task
+
+    if model_path.suffix == ".pt":
+        engine_path = model_path.with_suffix(".engine")
+        if not engine_path.exists():
+            try:
+                print(f"[convert] Converting {model_path.name} to TensorRT ({engine_path.name})...")
+                model = YOLO(str(model_path), verbose=False)
+
+                if device != "cpu":
+                    torch.cuda.empty_cache()
+
+                model.export(
+                    format="engine",
+                    device=device,
+                    int8=True,
+                    batch=8,
+                    workspace=2.0,
+                    dynamic=True,
+                    simplify=True,
+                    verbose=False,
+                )
+                
+            except Exception as e:
+                raise RuntimeError(f"Failed to convert {model_path} to TensorRT: {e}")
+        
+        model_path = engine_path
+
     if _model is None or _task != task or str(model_path) not in str(_model):
-        _task  = task
+        _task = task
         _model = YOLO(str(model_path))
         print(f"[detect] loaded {_task} model from {model_path}")
 
 
 def load_model(task: TaskT = "pose", 
                model_name: Union[str, None] = None, 
-               model_format: str="pt") -> dict:
-        
+               model_format: str = "pt",
+               device: str = "cuda") -> dict:
+    
     task = task.lower()
     try:
         path = _resolve_model_path(task, model_name, model_format)
     except Exception as e:
         return {"status": False, "message": str(e)}
 
-    _load(task, path)
+    try:
+        _load(task, path, device=device)
+    except Exception as e:
+        return {"status": False, "message": f"Failed to load model: {e}"}
+
     return {"status": True, "message": f"Model for '{task}' loaded: {path.name}"}
     
     
@@ -97,14 +130,13 @@ def detect(img: np.ndarray,
         "obb" : np.empty((0, 5), dtype=np.float32),
     }
     
-    # ---------- task-specific containers ---------------------------------
     if task == "obb":
         confs = res.obb.conf.cpu().numpy()
         clses = res.obb.cls.cpu().numpy().astype(np.int32)
         out["obb"] = _slice(res.obb.xywhr.cpu().numpy(), n_limit)
     elif task == "classify":
         tensor = res.probs.data if hasattr(res.probs, "data") else res.probs
-        probs  = tensor.cpu().numpy()            # ndarray(float32)
+        probs  = tensor.cpu().numpy()
         cls_id = int(np.argmax(probs))
         score  = float(probs[cls_id])
 
@@ -131,6 +163,4 @@ def detect(img: np.ndarray,
     if task == "obb":
         out["obb"] = _slice(res.obb.xywhr.cpu().numpy(), n_limit)
         
-    
-
     return out
