@@ -7,7 +7,6 @@ services:
     network_mode: host
     restart: unless-stopped
 
-    # ── GPU / RealSense / привилегии ─────────────────────────────
     runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
@@ -15,17 +14,17 @@ services:
       - CUDA_LAUNCH_BLOCKING=1
     privileged: true
     devices:
-    # RealSense
+      # RealSense D400
       - "/dev/video0:/dev/video0"
       - "/dev/video1:/dev/video1"
       - "/dev/video2:/dev/video2"
       - "/dev/video3:/dev/video3"
       - "/dev/video4:/dev/video4"
       - "/dev/video5:/dev/video5"
-      # Lidar
+      # RealSense L500
       - "/dev/video5:/dev/video6"
       - "/dev/video5:/dev/video7"
 
       - "/dev/HID-SENSOR-2000e1.4.auto:/dev/HID-SENSOR-2000e1.4.auto"
-      # Jetson DLA (необязательно)
+      # Jetson DLA (optional)
       # - "/dev/nvhost-dla:/dev/nvhost-dla"

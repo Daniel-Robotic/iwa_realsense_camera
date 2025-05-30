@@ -12,12 +12,12 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUTF8=1 \
     PATH="/vcpkg_dir/vcpkg:${PATH}"
 
-# Настройка зеркал и времени
+# Setting up time and mirrors
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
     sed -i 's|http://archive.ubuntu.com/ubuntu|http://mirror.yandex.ru/ubuntu|g' /etc/apt/sources.list && \
     sed -i 's|http://security.ubuntu.com/ubuntu|http://mirror.yandex.ru/ubuntu|g' /etc/apt/sources.list
 
-# Установка зависимостей
+# Installing dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     software-properties-common \
     tzdata \
@@ -54,7 +54,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 
-# Установка vcpkg
+# Installing vcpkg
 WORKDIR /vcpkg_dir
 COPY ./vcpkg.json /vcpkg_dir/ros_packages/vcpkg.json
 RUN git clone https://github.com/microsoft/vcpkg.git && \
@@ -62,7 +62,7 @@ RUN git clone https://github.com/microsoft/vcpkg.git && \
     vcpkg install --x-manifest-root=/vcpkg_dir/ros_packages && \
     rm -rf /vcpkg_dir/vcpkg/buildtrees /vcpkg_dir/vcpkg/downloads
 
-# Установка ROS 2 Humble
+# Installing ROS 2 Humble
 RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
     echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2.list && \
     apt-get update && apt-get install -y --no-install-recommends --fix-missing \
@@ -76,19 +76,16 @@ RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o 
     python3-rosdep2 \
     && rm -rf /var/lib/apt/lists/*
 
-# Установка исходников ROS2 проекта
+# Building ROS2 packages
 WORKDIR /ros2_ws/src
 COPY . /ros2_ws/src/
 
-# CMAKE путь к зависимостям vcpkg
 ENV CMAKE_PREFIX_PATH="/vcpkg_dir/ros_packages/vcpkg_installed/x64-linux/share"
 
-# Сборка ROS2 пакетов
 WORKDIR /ros2_ws
 SHELL ["/bin/bash", "-c"]
 RUN source /opt/ros/humble/setup.bash && \
     colcon build --merge-install \
       --cmake-args -DCMAKE_TOOLCHAIN_FILE=/vcpkg_dir/vcpkg/scripts/buildsystems/vcpkg.cmake
 
-# CMD ["tail", "-f", "/dev/null"]
 CMD [ "bash", "-c", "source /ros2_ws/install/setup.bash && ros2 launch iiwa_realsense_camera camera_handler_launch.py" ] 
