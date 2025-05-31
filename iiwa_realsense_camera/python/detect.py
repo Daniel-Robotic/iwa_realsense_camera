@@ -67,12 +67,10 @@ def _load(task: TaskT, model_path: Path, device: str = "cuda"):
                 model.export(
                     format="engine",
                     device=device,
-                    int8=True,
-                    batch=8,
+                    half=True,
                     workspace=2.0,
-                    dynamic=True,
                     simplify=True,
-                    verbose=False,
+                    verbose=False
                 )
                 
             except Exception as e:

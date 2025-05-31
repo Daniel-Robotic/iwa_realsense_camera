@@ -42,7 +42,7 @@ class CameraHandler : public rclcpp::Node {
       this->declare_parameter("crop_x_offset", 0);
       this->declare_parameter("crop_y_offset", 0);
       this->declare_parameter("publish_image", true);
-      this->declare_parameter("publish_human_pose", false);
+      this->declare_parameter("publish_detect_object", false);
       this->declare_parameter("model_name", "yolov8n-pose");
       this->declare_parameter("model_format", "pt");
       this->declare_parameter("model_conf", 0.3);
@@ -58,7 +58,7 @@ class CameraHandler : public rclcpp::Node {
       crop_x_offset_ = static_cast<uint16_t>(this->get_parameter("crop_x_offset").as_int());
       crop_y_offset_ = static_cast<uint16_t>(this->get_parameter("crop_y_offset").as_int());
       publish_image_ = static_cast<bool>(this->get_parameter("publish_image").as_bool());
-      publish_human_pose_ = static_cast<bool>(this->get_parameter("publish_human_pose").as_bool());
+      publish_detect_object_ = static_cast<bool>(this->get_parameter("publish_detect_object").as_bool());
       model_device_ = static_cast<string>(this->get_parameter("model_device").as_string());
       model_conf_ = static_cast<float>(this->get_parameter("model_conf").as_double());
       max_object_detection_= static_cast<uint8_t>(this->get_parameter("max_object_detection").as_int());
@@ -182,7 +182,7 @@ class CameraHandler : public rclcpp::Node {
         cv::resize(color_image_, color_image_, cv::Size(width, height));
       }
 
-      if (publish_human_pose_) {
+      if (publish_detect_object_) {
         cv::Mat &rgb = color_image_;
         if (rgb.empty()) return;
         if (!rgb.isContinuous()) rgb = rgb.clone();
@@ -327,10 +327,10 @@ class CameraHandler : public rclcpp::Node {
 
     void handle_nn_detection([[maybe_unused]] const shared_ptr<std_srvs::srv::Trigger::Request> request,
                               shared_ptr<std_srvs::srv::Trigger::Response> response) {
-        publish_human_pose_ = !publish_human_pose_;
+        publish_detect_object_ = !publish_detect_object_;
         
         string msg = "Neural network status: ";
-        msg += publish_human_pose_ ? "on" : "off";
+        msg += publish_detect_object_ ? "on" : "off";
         RCLCPP_INFO(this->get_logger(), msg.c_str());
 
         response->success = true;
@@ -397,8 +397,8 @@ class CameraHandler : public rclcpp::Node {
       model_device_ = request->device;
       max_object_detection_ = request->max_objects;
 
-      bool publish_status = publish_human_pose_; 
-      publish_human_pose_ = false;
+      bool publish_status = publish_detect_object_; 
+      publish_detect_object_ = false;
       
       py::dict out = load_model_func_(request->task, request->model_name, request->model_format).cast<py::dict>();
       bool status = out["status"].cast<py::bool_>();
@@ -409,7 +409,7 @@ class CameraHandler : public rclcpp::Node {
       response->status = status;
       response->message = message;
 
-      publish_human_pose_ = publish_status;
+      publish_detect_object_ = publish_status;
     }
 
     void handle_change_profile(const shared_ptr<iiwa_realsense_interfaces::srv::ChangeProfile::Request> request,
@@ -540,7 +540,7 @@ class CameraHandler : public rclcpp::Node {
     string model_name, model_format;
     cv::Mat depth_image_, color_image_;
     uint16_t crop_x_offset_, crop_y_offset_;
-    bool publish_image_, publish_human_pose_;
+    bool publish_image_, publish_detect_object_;
 
     const vector<pair<int,int>> COCO_PAIRS_ = {
         {0,1},{0,2},{1,3},{2,4},        // head-shoulders

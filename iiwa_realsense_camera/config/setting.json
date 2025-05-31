@@ -1,6 +1,6 @@
 {
-    "node_name": "jetson_left_node",
-    "camera_name": "RealSenseD455",
+    "node_name": "realsense_node",
+    "camera_name": "CameraName",
     "camera_width": 640,
     "camera_height": 480,
     "camera_fps": 30,
@@ -8,11 +8,11 @@
     "crop_x_offset": 0,
     "crop_y_offset": 0,
     "publish_image": true,
-    "publish_human_pose": true,
+    "publish_detect_object": true,
     "model_name": "yolov8n-pose",
-    "model_format": "pt",
+    "model_format": "engine",
     "model_task": "pose", 
-    "model_conf": 0.5,
-    "model_device": "cpu", 
-    "max_object_detection": 2
+    "model_conf": 0.7,
+    "model_device": "cuda", 
+    "max_object_detection": 1
   }
