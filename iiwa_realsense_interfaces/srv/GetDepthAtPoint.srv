@@ -1,6 +1,34 @@
+# This service returns the depth value (distance from camera) at a specified 2D pixel
+# in the aligned depth image. It is useful when only the Z-coordinate is needed
+# without full 3D deprojection.
+#
+# Example use cases:
+# - Measuring how far an object is from the camera at a known image location
+# - Verifying depth consistency for a detection
+# - Triggering actions based on object proximity (e.g., stop if closer than threshold)
+
+# ----------------------- Request -----------------------
+
 uint16 x
+# X-coordinate (column index) of the pixel in the depth image (0-based)
+
 uint16 y
+# Y-coordinate (row index) of the pixel in the depth image (0-based)
+
+# ----------------------- Response -----------------------
+
 ---
 float32 depth
+# Depth value at the specified pixel, in millimeters or meters depending on camera setup.
+# A value of 0.0 usually indicates invalid or missing depth data.
+
 bool success
+# true  -> depth value was read successfully
+# false -> pixel was out of bounds or data was invalid
+
 string message
+# Informative result message.
+# Examples:
+# "Depth successfully obtained"
+# "Coordinates out of bounds"
+# "Depth data not available"

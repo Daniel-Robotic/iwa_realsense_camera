@@ -1,8 +1,39 @@
+# IntelCameraInformation.srv
+#
+# This service provides metadata and hardware details about the connected Intel RealSense camera.
+# It is useful for diagnostics, logging, system introspection, and dynamic configuration
+# based on the specific hardware model and its capabilities.
+#
+# Example use cases:
+# - Verifying the connected camera model and firmware version at runtime
+# - Selecting optimal streaming profiles based on available depth/color modes
+# - Logging device serial number for traceability in industrial setups
+
+# ----------------------- Request -----------------------
+
+# (No request fields required — the service returns information for the active camera)
+
 ---
+
+# ----------------------- Response -----------------------
+
 string device_name
+# User-friendly name of the connected camera (e.g., "Intel RealSense D435")
+
 string product_line
+# Product family or series name (e.g., "D400", "L500")
+
 string serial_number
+# Unique hardware identifier assigned to the camera. Useful for tracking and diagnostics.
+
 string firmware_version
+# Firmware version currently running on the camera device.
+
 string usb_type
+# Type of USB connection (e.g., "USB3", "USB2"). Affects data transfer performance.
+
 string[] depth_profile
+# List of supported depth stream profiles as strings (e.g., "640x480@30", "1280x720@15")
+
 string[] color_profile
+# List of supported color (RGB) stream profiles in the same format as above.

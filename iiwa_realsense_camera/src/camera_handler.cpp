@@ -1,3 +1,9 @@
+// This ROS2 node captures synchronized RGB and Depth frames from a RealSense camera,
+// optionally applies zoom and crop, passes the RGB image to a Python model for inference
+// (e.g., YOLOv8 with pose/segmentation/detection), and publishes both raw image and
+// detection results to ROS topics. It also provides various services for runtime control.
+
+// Includes for C++ standard and external libraries
 #include <chrono>
 #include <memory>
 #include <string>
@@ -7,11 +13,13 @@
 #include <pybind11/numpy.h>
 #include <opencv4/opencv2/opencv.hpp>
 
+// ROS2 includes
 #include "rclcpp/rclcpp.hpp" 
 #include "std_srvs/srv/trigger.hpp"
 #include "sensor_msgs/msg/compressed_image.hpp"
 #include "ament_index_cpp/get_package_share_directory.hpp"
 
+// Custom interface and service messages
 #include "iiwa_realsense_interfaces/srv/intel_camera_information.hpp"
 #include "iiwa_realsense_interfaces/srv/get_depth_at_point.hpp"
 #include "iiwa_realsense_camera/realsense_camera_wrapper.hpp"
@@ -22,7 +30,7 @@
 #include "iiwa_realsense_interfaces/msg/detections.hpp"
 #include "iiwa_realsense_interfaces/srv/crop_image.hpp" 
 
-
+// Namespace aliasing
 namespace py = pybind11;
 namespace fs = std::filesystem;
 using namespace std;
@@ -32,6 +40,11 @@ using namespace pybind11::literals;
 
 class CameraHandler : public rclcpp::Node {
   public:
+    // Constructor:
+    // - Declares and retrieves ROS parameters
+    // - Initializes Python interpreter and loads the default model
+    // - Creates camera wrapper and ROS publishers/services
+    // - Starts periodic timer for image capture and processing
     CameraHandler() : Node("camera_handler_node")
      {
       this->declare_parameter("camera_name", "default_camera");
@@ -145,6 +158,9 @@ class CameraHandler : public rclcpp::Node {
       RCLCPP_INFO(this->get_logger(), "Camera %s has been started", camera_name_.c_str());
     }
 
+    // Destructor:
+    // - Finalizes Python interpreter
+    // - Stops RealSense camera streaming
     ~CameraHandler() {
       py::finalize_interpreter();
       camera_->stopStreaming();
@@ -153,6 +169,11 @@ class CameraHandler : public rclcpp::Node {
 
   private:
 
+    // Main timer callback:
+    // - Captures aligned RGB and depth images
+    // - Applies crop and zoom if requested
+    // - Optionally runs neural network inference and draws results
+    // - Publishes detection results and/or compressed image
     void timer_callback() {
       auto [depth_frame, color_frame] = camera_->getAlignedImages();
 
@@ -187,7 +208,6 @@ class CameraHandler : public rclcpp::Node {
         if (rgb.empty()) return;
         if (!rgb.isContinuous()) rgb = rgb.clone();
 
-        /* ----------- подготовка NumPy-образа ------------ */
         const std::vector<ssize_t> shape   = { rgb.rows, rgb.cols, 3 };
         const std::vector<ssize_t> strides = { static_cast<ssize_t>(rgb.step[0]),
                                               static_cast<ssize_t>(rgb.step[1]),
@@ -195,7 +215,6 @@ class CameraHandler : public rclcpp::Node {
         py::gil_scoped_acquire gil;
         py::array_t<uint8_t> np_img(shape, strides, rgb.data, py::none());
 
-        /* ----------- вызов detect(task-универсальный) ---- */
         int max_arg = (max_object_detection_ == 0) ? -1 : max_object_detection_;
         py::dict out = detect_func_(np_img,
                                     "conf"_a = model_conf_,
@@ -261,7 +280,6 @@ class CameraHandler : public rclcpp::Node {
             }
         }
 
-        /* ----------- формирование Detection.msg ------------------------------ */
         iiwa_realsense_interfaces::msg::Detections detection_msg_;
         detection_msg_.header.stamp = ros_time;
         detection_msg_.header.frame_id = camera_name_;
@@ -313,6 +331,10 @@ class CameraHandler : public rclcpp::Node {
       }
     }
 
+    // Service callback:
+    // - Input: empty Trigger request
+    // - Toggles the "publish_image_" flag to start/stop publishing images
+    // - Returns a response message with new status
     void handle_stop_streaming_camera([[maybe_unused]] const shared_ptr<std_srvs::srv::Trigger::Request> request,
                                       shared_ptr<std_srvs::srv::Trigger::Response> response) {
         publish_image_ = !publish_image_;
@@ -325,6 +347,10 @@ class CameraHandler : public rclcpp::Node {
         response->message = msg;
     }
 
+    // Service callback:
+    // - Input: empty Trigger request
+    // - Toggles the "publish_detect_object_" flag to enable/disable detection
+    // - Returns a response message with updated status
     void handle_nn_detection([[maybe_unused]] const shared_ptr<std_srvs::srv::Trigger::Request> request,
                               shared_ptr<std_srvs::srv::Trigger::Response> response) {
         publish_detect_object_ = !publish_detect_object_;
@@ -337,6 +363,10 @@ class CameraHandler : public rclcpp::Node {
         response->message = msg;
     }
 
+    // Service callback:
+    // - Lists all .pt/.engine models from the models directory
+    // - Input: empty request
+    // - Output: success flag, list of model paths, and message
     void handle_list_models([[maybe_unused]] const std::shared_ptr<iiwa_realsense_interfaces::srv::ListModels::Request> request,
       std::shared_ptr<iiwa_realsense_interfaces::srv::ListModels::Response> response) {
       try {
@@ -366,10 +396,15 @@ class CameraHandler : public rclcpp::Node {
 
     }
 
+    // Service callback:
+    // - Loads a new model for detection/pose/segmentation tasks
+    // - Validates the request (confidence ∈ [0,1], valid device, etc.)
+    // - Calls Python load_model() and stores the configuration
+    // - Returns success status and load result message
     void handle_load_model(const shared_ptr<iiwa_realsense_interfaces::srv::ChangeModel::Request> request,
                            shared_ptr<iiwa_realsense_interfaces::srv::ChangeModel::Response> response) {
       
-      // ---------- валидация ----------
+      
       if (request->confidence < 0.f || request->confidence > 1.f) {
         response->status = false;
         response->message = "confidence must be in [0,1]";
@@ -412,6 +447,10 @@ class CameraHandler : public rclcpp::Node {
       publish_detect_object_ = publish_status;
     }
 
+    // Service callback:
+    // - Changes resolution and FPS of the camera
+    // - Invokes camera wrapper changeCameraProfile()
+    // - Returns status and message based on success/failure
     void handle_change_profile(const shared_ptr<iiwa_realsense_interfaces::srv::ChangeProfile::Request> request,
                                shared_ptr<iiwa_realsense_interfaces::srv::ChangeProfile::Response> response) {
       bool status = camera_->changeCameraProfile(request->width, request->height, request->fps);
@@ -421,6 +460,9 @@ class CameraHandler : public rclcpp::Node {
       else RCLCPP_WARN(this->get_logger(), "Failed to change profile");
     }
 
+    // Service callback:
+    // - Returns camera metadata including name, USB type, supported stream profiles, etc.
+    // - Fills all fields of IntelCameraInformation.srv
     void handle_info([[maybe_unused]] const std::shared_ptr<iiwa_realsense_interfaces::srv::IntelCameraInformation::Request> request,
                      std::shared_ptr<iiwa_realsense_interfaces::srv::IntelCameraInformation::Response> response) {
       auto info = camera_->getCameraInformation();
@@ -433,6 +475,10 @@ class CameraHandler : public rclcpp::Node {
       response->depth_profile = info.depth_profile;
     }
 
+    // Service callback:
+    // - Updates zoom level and cropping offset for the image stream
+    // - Ensures values are positive and within bounds
+    // - Updates internal parameters and returns result
     void handle_crop_image(const std::shared_ptr<iiwa_realsense_interfaces::srv::CropImage::Request> request,
                            std::shared_ptr<iiwa_realsense_interfaces::srv::CropImage::Response> response) {
       if (request->zoom_level <= 0 || request->crop_x_offset < 0 || request->crop_y_offset < 0) {
@@ -454,81 +500,92 @@ class CameraHandler : public rclcpp::Node {
       response->message = msg;
     }
 
-  void handle_get_depth_at_point(const std::shared_ptr<iiwa_realsense_interfaces::srv::GetDepthAtPoint::Request> request,
+
+    // Service callback:
+    // - Returns depth value at (x, y) pixel coordinate
+    // - Validates bounds
+    // - Reads depth from latest frame and returns it
+    void handle_get_depth_at_point(const std::shared_ptr<iiwa_realsense_interfaces::srv::GetDepthAtPoint::Request> request,
                                  std::shared_ptr<iiwa_realsense_interfaces::srv::GetDepthAtPoint::Response> response) {
-    try {
-      uint16_t x = request->x;
-      uint16_t y = request->y;
-      string msg = "Depth successfully obtained";
+      try {
+        uint16_t x = request->x;
+        uint16_t y = request->y;
+        string msg = "Depth successfully obtained";
 
-      RCLCPP_INFO(this->get_logger(), "Image size: cols=%d, rows=%d; Request: x=%d, y=%d",
-                  depth_image_.cols, depth_image_.rows, request->x, request->y);
+        RCLCPP_INFO(this->get_logger(), "Image size: cols=%d, rows=%d; Request: x=%d, y=%d",
+                    depth_image_.cols, depth_image_.rows, request->x, request->y);
 
 
-      if (x >= depth_image_.cols || y >= depth_image_.rows) {
-        msg = "Coordinates out of bounds";
-        RCLCPP_WARN(this->get_logger(), msg.c_str());
-        response->success = false;
+        if (x >= depth_image_.cols || y >= depth_image_.rows) {
+          msg = "Coordinates out of bounds";
+          RCLCPP_WARN(this->get_logger(), msg.c_str());
+          response->success = false;
+          response->message = msg;
+          response->depth = 0.0;
+          return;
+        }
+
+        RCLCPP_INFO(this->get_logger(), msg.c_str());
+
+        uint16_t raw_depth = depth_image_.at<uint16_t>(y, x);
+        response->depth = static_cast<float>(raw_depth);
+        response->success = true;
         response->message = msg;
+
+      } catch (const exception& e) {
+        RCLCPP_ERROR(this->get_logger(), e.what());
+        response->success = false;
+        response->message = e.what();
         response->depth = 0.0;
-        return;
       }
-
-      RCLCPP_INFO(this->get_logger(), msg.c_str());
-
-      uint16_t raw_depth = depth_image_.at<uint16_t>(y, x);
-      response->depth = static_cast<float>(raw_depth);
-      response->success = true;
-      response->message = msg;
-
-    } catch (const exception& e) {
-      RCLCPP_ERROR(this->get_logger(), e.what());
-      response->success = false;
-      response->message = e.what();
-      response->depth = 0.0;
     }
-  }
 
-  void handle_get_3d_point(const std::shared_ptr<iiwa_realsense_interfaces::srv::Get3DPoint::Request> request,
-                           std::shared_ptr<iiwa_realsense_interfaces::srv::Get3DPoint::Response> response) {
-    try {
-      uint16_t x = request->x;
-      uint16_t y = request->y;
+    // Service callback:
+    // - Converts pixel (x, y) to 3D coordinates in camera space
+    // - Uses RealSense intrinsics and deprojection function
+    // - Returns (X, Y, Z) point or failure message
+    void handle_get_3d_point(const std::shared_ptr<iiwa_realsense_interfaces::srv::Get3DPoint::Request> request,
+                            std::shared_ptr<iiwa_realsense_interfaces::srv::Get3DPoint::Response> response) {
+      try {
+        uint16_t x = request->x;
+        uint16_t y = request->y;
 
-      string msg = "3D point obtained successfully";
+        string msg = "3D point obtained successfully";
 
-      if (x >= depth_image_.cols || y >= depth_image_.rows) {
-        msg = "Coordinates out of bounds";
-        response->success = false;
+        if (x >= depth_image_.cols || y >= depth_image_.rows) {
+          msg = "Coordinates out of bounds";
+          response->success = false;
+          response->message = msg;
+          return;
+        }
+  ;
+        rs2::frameset frames = camera_->getLatestFrameset();
+        rs2::depth_frame depth_frame = frames.get_depth_frame();
+
+        float depth_m = depth_frame.get_distance(x, y);
+
+        rs2::video_stream_profile depth_profile = depth_frame.get_profile().as<rs2::video_stream_profile>();
+        rs2_intrinsics intrin = depth_profile.get_intrinsics();
+
+        float pixel[2] = {static_cast<float>(x), static_cast<float>(y)};
+        float point[3];
+        rs2_deproject_pixel_to_point(point, &intrin, pixel, depth_m);
+
+        RCLCPP_INFO(this->get_logger(), msg.c_str());
+        response->x = point[0];
+        response->y = point[1];
+        response->z = point[2];
+        response->success = true;
         response->message = msg;
-        return;
+      } catch (const std::exception &e) {
+        RCLCPP_ERROR(this->get_logger(), e.what());
+        response->success = false;
+        response->message = e.what();
       }
-;
-      rs2::frameset frames = camera_->getLatestFrameset();
-      rs2::depth_frame depth_frame = frames.get_depth_frame();
-
-      float depth_m = depth_frame.get_distance(x, y);
-
-      rs2::video_stream_profile depth_profile = depth_frame.get_profile().as<rs2::video_stream_profile>();
-      rs2_intrinsics intrin = depth_profile.get_intrinsics();
-
-      float pixel[2] = {static_cast<float>(x), static_cast<float>(y)};
-      float point[3];
-      rs2_deproject_pixel_to_point(point, &intrin, pixel, depth_m);
-
-      RCLCPP_INFO(this->get_logger(), msg.c_str());
-      response->x = point[0];
-      response->y = point[1];
-      response->z = point[2];
-      response->success = true;
-      response->message = msg;
-    } catch (const std::exception &e) {
-      RCLCPP_ERROR(this->get_logger(), e.what());
-      response->success = false;
-      response->message = e.what();
     }
-  }
 
+
+    // --- Internal parameters and member variables ---
     float zoom_level_;
     float model_conf_;
     string camera_name_;
@@ -542,6 +599,7 @@ class CameraHandler : public rclcpp::Node {
     uint16_t crop_x_offset_, crop_y_offset_;
     bool publish_image_, publish_detect_object_;
 
+    // For connecting human keypoints
     const vector<pair<int,int>> COCO_PAIRS_ = {
         {0,1},{0,2},{1,3},{2,4},        // head-shoulders
         {5,6},{5,7},{7,9},{6,8},{8,10}, // arms
@@ -549,15 +607,16 @@ class CameraHandler : public rclcpp::Node {
         {11,13},{13,15},{12,14},{14,16} // legs
     };
 
-    rclcpp::TimerBase::SharedPtr timer_;
-    shared_ptr<RealsenseCameraWrapper> camera_;
+    rclcpp::TimerBase::SharedPtr timer_;  // Main periodic timer
+    shared_ptr<RealsenseCameraWrapper> camera_;  // Camera wrapper object
+
+    // ROS publishers
     rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr publisher_;
     rclcpp::Publisher<iiwa_realsense_interfaces::msg::Detections>::SharedPtr detection_publisher_;
 
+    // ROS services
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr nn_detection_service_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr streaming_camera_service_;
-    
-    
     rclcpp::Service<iiwa_realsense_interfaces::srv::CropImage>::SharedPtr crop_image_service_;
     rclcpp::Service<iiwa_realsense_interfaces::srv::ChangeModel>::SharedPtr load_model_service_;
     rclcpp::Service<iiwa_realsense_interfaces::srv::ListModels>::SharedPtr list_models_service_;

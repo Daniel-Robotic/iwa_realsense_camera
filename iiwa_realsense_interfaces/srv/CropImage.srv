@@ -1,6 +1,37 @@
+# This service adjusts the cropping area and zoom level of the camera image stream.
+# It is used to focus on a specific region of interest (ROI) within the captured image
+# without changing the physical camera position or resolution.
+#
+# Example use cases:
+# - Dynamically zoom in on a workspace or object being manipulated
+# - Align the image view with a predefined area (e.g., calibration grid or assembly zone)
+# - Reduce the image processing area for performance optimization
+
+# ----------------------- Request -----------------------
+
 float32 zoom_level
+# Zoom factor to apply to the image.
+# zoom_level > 1.0 -> zoom in (smaller cropped region scaled up)
+# zoom_level = 1.0 -> no zoom (full image)
+# Must be > 0.0
+
 int32 crop_x_offset
+# Horizontal offset (in pixels) for the top-left corner of the crop region.
+# Must be ≥ 0 and such that the cropped region stays within image bounds.
+
 int32 crop_y_offset
+# Vertical offset (in pixels) for the top-left corner of the crop region.
+# Must be ≥ 0 and such that the cropped region stays within image bounds.
+
+# ----------------------- Response -----------------------
+
 ---
 bool success
+# true  -> crop parameters were accepted and applied
+# false -> invalid parameters (e.g., zoom_level ≤ 0 or offsets out of bounds)
+
 string message
+# Descriptive result message.
+# Examples:
+# "Crop updated"
+# "Invalid crop parameters"

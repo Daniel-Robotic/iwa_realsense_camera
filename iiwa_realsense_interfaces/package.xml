@@ -2,8 +2,10 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>iiwa_realsense_interfaces</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <version>0.0.1</version>
+  <description>ROS 2 is an interface package containing user messages (msg) and services (srv)
+    for controlling the Intel RealSense camera used in a collaborative system with the KUKA iiwa robot.
+        Defines structures for detecting, changing models, requesting 3D points, depth, changing the profile, and so on.</description>
   <maintainer email="grabardm@ml-dev.ru">daniell</maintainer>
   <license>Apache-2.0</license>
 

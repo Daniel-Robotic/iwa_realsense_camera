@@ -1,9 +1,54 @@
+# This service is used to dynamically load and configure a neural network model 
+# for object detection, segmentation, pose estimation, or other vision tasks
+# in the CameraHandler node. This allows switching models during runtime without restarting ROS.
+#
+# Example use cases:
+# - Switching to a lightweight model (e.g. yolov8n) when performance is critical
+# - Changing the detection task from "pose" to "segment"
+# - Enabling GPU acceleration by setting device = "cuda"
+# - Tuning confidence or limiting the number of detections
+
+# ----------------------- Request -----------------------
+
 string task
+# Type of inference task to perform. Supported values include:
+# "detect"   -> object detection (bounding boxes)
+# "segment"  -> instance segmentation (pixel masks)
+# "pose"     -> human pose estimation (keypoints)
+# "obb"      -> oriented bounding box detection (rotated rectangles)
+
 string model_name
+# Name of the model to be loaded. This corresponds to a file in the models directory,
+# e.g. "yolov8n-pose", "yolov8s-seg", etc.
+
 string model_format
+# Format of the model file. Supported values:
+# "pt"      -> PyTorch .pt format
+# "engine"  -> TensorRT .engine format
+
 float32 confidence
+# Confidence threshold for filtering detections. Range: [0.0, 1.0].
+# Detections with scores below this value will be ignored.
+
 string device
+# Device used for model inference. Allowed values:
+# "cpu"   -> run on CPU
+# "cuda"  -> run on GPU (if supported)
+
 uint8 max_objects
+# Maximum number of detections to return per image.
+# Must be greater than 0. Useful to reduce output size and processing time.
+
+# ----------------------- Response -----------------------
+
 ---
 bool status
+# true  -> model loaded successfully
+# false -> loading failed due to invalid parameters or file not found
+
 string message
+# Informative message returned by the backend. Examples:
+# "Model loaded successfully"
+# "Invalid confidence value: must be in [0,1]"
+# "Device must be 'cpu' or 'cuda'"
+# "Model file not found"

@@ -8,21 +8,26 @@ import importlib.resources as pkg
 import numpy as np
 import torch
 
+# Define the supported task types and model families
 TaskT = Literal["detect", "segment", "classify", "pose", "obb"]
 FamilyT = Literal["yolo8", "yolo11"]
 
+# Global model instance and task type
 _model: Union[YOLO, None] = None
 _task: TaskT = "pose"
 
+# Get the path to the models directory inside the ROS package
 _pkg_root = get_package_share_path("iiwa_realsense_camera")
 MODELS_DIR = _pkg_root / "models"
 
 
 def _slice(arr: np.ndarray, n: int | None):
+    """Return the first n elements of the array if n is specified and less than the array size."""
     return arr if n is None or arr.shape[0] <= n else arr[:n]
 
 
 def _family_from_model(model_name: str) -> FamilyT | None:
+    """Determine the model family based on the model name prefix."""
     if model_name.startswith("yolo8"):
         return "yolo8"
     if model_name.startswith("yolo11"):
@@ -34,6 +39,11 @@ def _resolve_model_path(task: TaskT,
                         model_name: Union[str, None],
                         model_format: str) -> Path:
 
+    """
+    Determine the full path to the model file.
+    If model_name is not given, fallback to the first available model for the task.
+    """
+    
     family: FamilyT = "yolo8"
 
     if model_name:
@@ -45,6 +55,7 @@ def _resolve_model_path(task: TaskT,
         fname = f"{model_name}.{model_format}" if "." not in model_name else model_name
         return MODELS_DIR / family / task / fname
 
+    # If no model name is provided, use the first .pt model found in the task directory
     task_dir = MODELS_DIR / family / task
     for p in task_dir.glob("*.pt"):
         return p
@@ -52,6 +63,11 @@ def _resolve_model_path(task: TaskT,
 
 
 def _load(task: TaskT, model_path: Path, device: str = "cuda"):
+    """
+    Load the model into memory. If the model is in .pt format and no .engine file exists,
+    it will be converted to TensorRT.
+    """
+    
     global _model, _task
 
     if model_path.suffix == ".pt":
@@ -88,6 +104,10 @@ def load_model(task: TaskT = "pose",
                model_name: Union[str, None] = None, 
                model_format: str = "pt",
                device: str = "cuda") -> dict:
+    """
+    Load and optionally convert a model for the given task.
+    Returns a dictionary with status and message.
+    """
     
     task = task.lower()
     try:
@@ -109,6 +129,11 @@ def detect(img: np.ndarray,
            task: TaskT | None = None,
            max_objects: int | None = None,
            device: str = "cpu") -> dict[str, Any]:
+    """
+    Run inference on the image using the currently loaded model.
+    Supports tasks: detect, segment, pose, classify, obb.
+    Returns a dictionary with structured results for the given task.
+    """
     
     global _task
     task = (task or _task).lower()

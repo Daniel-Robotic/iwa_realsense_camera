@@ -31,7 +31,6 @@ rosidl_generate_interfaces(
   ${srv_files}
 
   DEPENDENCIES std_msgs
-  # DEPENDENCIES sensor_msgs geometry_msgs
 )
 ament_export_dependencies(rosidl_default_runtime std_msgs)
 

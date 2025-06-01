@@ -1,8 +1,37 @@
+# This service retrieves a 3D point in camera coordinate space corresponding to a given 2D pixel
+# from the depth image. It performs deprojection using the camera intrinsics and depth data.
+#
+# Example use cases:
+# - Picking up an object whose pixel location is known (e.g., from a detection)
+# - Estimating the 3D pose of a point touched or clicked in the image
+# - Tracking depth-based features in 3D space
+
+# ----------------------- Request -----------------------
+
 int32 x
+# X-coordinate (column) of the pixel in the image (0-based index)
+
 int32 y
+# Y-coordinate (row) of the pixel in the image (0-based index)
+
+# ----------------------- Response -----------------------
+
 ---
 float32 x
+# X-coordinate in 3D camera space (in meters), computed via deprojection
+
 float32 y
+# Y-coordinate in 3D camera space (in meters)
+
 float32 z
+# Z-coordinate (depth) in 3D camera space (in meters)
+
 bool success
+# true  -> deprojection succeeded
+# false -> invalid pixel position or missing depth data
+
 string message
+# Human-readable message indicating result.
+# Examples:
+# "3D point obtained successfully"
+# "Coordinates out of bounds"

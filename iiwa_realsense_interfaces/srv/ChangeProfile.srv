@@ -1,6 +1,35 @@
+# This service is used to change the resolution and frame rate (FPS) of the RealSense camera
+# during runtime. It allows the system to adapt to different vision tasks that require 
+# higher speed (higher FPS) or better image quality (higher resolution).
+#
+# Example use cases:
+# - Increase resolution to detect small objects more accurately
+# - Decrease resolution and FPS to reduce CPU load when high speed is not required
+# - Adjust camera profile dynamically depending on robot state or task
+
+# ----------------------- Request -----------------------
+
 uint16 width
+# Desired image width in pixels. 
+# Common values: 640, 1280, 1920
+
 uint16 height
+# Desired image height in pixels.
+# Common values: 480, 720, 1080
+
 uint16 fps
+# Desired frames per second for the video stream.
+# Typical values: 15, 30, 60
+
+# ----------------------- Response -----------------------
+
 ---
 bool status
+# true  -> profile was changed successfully
+# false -> the requested configuration was not supported or camera failed to apply it
+
 string message
+# Descriptive message about the result.
+# Examples:
+# "Profile changed"
+# "Failed to change profile"

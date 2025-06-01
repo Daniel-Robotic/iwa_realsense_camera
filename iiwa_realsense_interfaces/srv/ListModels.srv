@@ -1,5 +1,34 @@
-# Request ─ пустой
+# This service returns the list of available neural network models stored in the
+# camera package directory. It allows runtime model discovery so users can switch
+# models dynamically without hardcoding their names.
+#
+# Example use cases:
+# - Displaying available models in a GUI or web dashboard
+# - Validating requested model names before loading them
+# - Automatically selecting models based on task or context
+
+# ----------------------- Request -----------------------
+
+# No request fields are needed — the service scans the model directory internally.
+
 ---
-bool      success          # true, если каталог найден
-string[]  models           # относительные пути: yolo8/pose/yolov8n-pose.pt …
-string    message          # диагностическая строка
+
+# ----------------------- Response -----------------------
+
+bool success
+# true  -> model directory was found and scanned successfully
+# false -> model directory was missing or could not be accessed
+
+string[] models
+# List of available model files, given as relative paths from the model root.
+# Examples:
+# - "yolo8/pose/yolov8n-pose.pt"
+# - "yolo8/segment/yolov8s-seg.engine"
+# These can be passed directly to ChangeModel.srv
+
+string message
+# Diagnostic message describing the result.
+# Examples:
+# "OK"
+# "models directory not found"
+# "0 models found"

@@ -2,8 +2,11 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>iiwa_realsense_camera</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <version>0.0.1</version>
+  <description>ROS 2 is a package for working with the Intel RealSense camera in an environment with the KUKA LBR iiwa collaborative manipulator.
+    Supports receiving and publishing synchronized RGB and depth images, 3D points, and 
+    integration with neural network models (YOLO, segmentation, poses). Enables the camera management service,
+    changes to models, profiles, and crop parameters.</description>
   <maintainer email="grabardm@ml-dev.ru">daniell</maintainer>
   <license>Apache-2.0</license>
 

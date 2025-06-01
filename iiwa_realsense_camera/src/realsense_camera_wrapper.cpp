@@ -5,18 +5,22 @@ using json = nlohmann::json;
 namespace fs = filesystem;
 
 
+// Constructor: Initializes RealSense pipeline, checks for RGB sensor, and sets stream profiles.
+// Throws runtime_error if RGB camera not found.
 RealsenseCameraWrapper::RealsenseCameraWrapper(uint16_t& width, uint16_t& height, uint16_t& fps)
     : align_(RS2_STREAM_COLOR), pipeline_started_(false) {
         rs2::pipeline_profile pipeline_profile = pipeline_.start(config_);
         pipeline_.stop();
         device_ = pipeline_profile.get_device();
 
+        // Set max distance on supported sensors (optional).
         for (auto&& sensor : device_.query_sensors()) {
             if (sensor.supports(RS2_OPTION_MAX_DISTANCE)) {
                 sensor.set_option(RS2_OPTION_MAX_DISTANCE, 10.0f);
             }
         }
 
+        // Ensure the device has an RGB camera.
         bool found_rgb = false;
         for (auto&& s : device_.query_sensors()) {
             if (s.get_info(RS2_CAMERA_INFO_NAME) == string("RGB Camera")) {
@@ -31,10 +35,12 @@ RealsenseCameraWrapper::RealsenseCameraWrapper(uint16_t& width, uint16_t& height
             throw runtime_error(message);
         }
 
+        // Enable color and depth streams with given resolution and fps.
         config_.enable_stream(RS2_STREAM_DEPTH, width, height, RS2_FORMAT_Z16, fps);
         config_.enable_stream(RS2_STREAM_COLOR, width, height, RS2_FORMAT_BGR8, fps);
     }
 
+// Destructor: Stops streaming and resets hardware (soft reboot).
 RealsenseCameraWrapper::~RealsenseCameraWrapper() {
     stopStreaming();
     try {
@@ -43,6 +49,7 @@ RealsenseCameraWrapper::~RealsenseCameraWrapper() {
     } catch (...) {}
 }
 
+// Starts the camera stream. If already running, does nothing.
 string RealsenseCameraWrapper::startStreaming() {
     if (pipeline_started_) return "Camera already started";
     try
@@ -58,6 +65,7 @@ string RealsenseCameraWrapper::startStreaming() {
     return "Camera started";
 }
 
+// Stops the camera stream. If already stopped, does nothing.
 string RealsenseCameraWrapper::stopStreaming() {
     if (!pipeline_started_) return "Camera already stopped";
     try {
@@ -71,6 +79,8 @@ string RealsenseCameraWrapper::stopStreaming() {
     return "Camera stopped";
 }
 
+// Tries to change the camera's resolution and fps.
+// Only changes if both RGB and depth sensors support requested profile.
 bool RealsenseCameraWrapper::changeCameraProfile(uint16_t& width, uint16_t& height, uint16_t& fps) {
     auto depth_profiles = getProfiles("Stereo Module");
     auto color_profiles = getProfiles("RGB Camera");
@@ -93,6 +103,7 @@ bool RealsenseCameraWrapper::changeCameraProfile(uint16_t& width, uint16_t& heig
     return false;
 }
 
+// Captures one frame and returns aligned depth and color images as OpenCV matrices.
 pair<cv::Mat, cv::Mat> RealsenseCameraWrapper::getAlignedImages() {
     if (!pipeline_started_) startStreaming();
     rs2::frameset frames = pipeline_.wait_for_frames();
@@ -115,12 +126,14 @@ pair<cv::Mat, cv::Mat> RealsenseCameraWrapper::getAlignedImages() {
     return {depth_image, color_image};
 }
 
+// Gets the most recent aligned frameset.
 rs2::frameset RealsenseCameraWrapper::getLatestFrameset() {
     if (!pipeline_started_) startStreaming();
     rs2::frameset frames = pipeline_.wait_for_frames();
     return align_.process(frames);
 }
 
+// Builds a 3D point cloud and corresponding texture coordinates from given frames.
 pair<vector<array<float, 3>>, vector<array<float, 2>>> RealsenseCameraWrapper::getPointCloud(
     const rs2::depth_frame& depth_frame, const rs2::video_frame color_frame) {
     
@@ -142,6 +155,7 @@ pair<vector<array<float, 3>>, vector<array<float, 2>>> RealsenseCameraWrapper::g
     return {verts, tex};
 }
 
+// Collects and returns camera info: name, firmware, USB type, and supported profiles.
 CameraInfo RealsenseCameraWrapper::getCameraInformation() {
     return CameraInfo{
         device_.get_info(RS2_CAMERA_INFO_NAME),
@@ -154,6 +168,7 @@ CameraInfo RealsenseCameraWrapper::getCameraInformation() {
     };
 }
 
+// Returns all profile strings (as JSON) for a sensor by name.
 vector<string> RealsenseCameraWrapper::getProfiles(const string& sensor_name_filter) {
     vector<string> profiles;
     for (auto&& sensor : device_.query_sensors()) {
@@ -165,6 +180,7 @@ vector<string> RealsenseCameraWrapper::getProfiles(const string& sensor_name_fil
     return profiles;
 }
 
+// Converts RealSense stream profiles of a sensor into JSON strings with dimensions, FPS, and format.
 vector<string> RealsenseCameraWrapper::getSensorProfiles(rs2::sensor& sensor) {
     vector<string> stream_profiles;
     auto profiles = sensor.get_stream_profiles();
@@ -189,6 +205,7 @@ vector<string> RealsenseCameraWrapper::getSensorProfiles(rs2::sensor& sensor) {
     return stream_profiles;
 }
 
+// Validates if given resolution/fps exists in the sensor's profile list.
 bool RealsenseCameraWrapper::checkProfileValidity(const vector<string>& profiles, uint16_t& width, uint16_t& height, uint16_t& fps) {
     for (const auto& profile_str : profiles) {
         auto j = json::parse(profile_str);
@@ -199,6 +216,7 @@ bool RealsenseCameraWrapper::checkProfileValidity(const vector<string>& profiles
     return false;
 }
 
+// Logs a message to log/RealsenseCameraWrapper.log with timestamp.
 void RealsenseCameraWrapper::log_message(const string& message) {
     const string log_dir = "log";
     const string log_file = log_dir + "/RealsenseCameraWrapper.log";
@@ -214,6 +232,7 @@ void RealsenseCameraWrapper::log_message(const string& message) {
     }
 }
 
+// Accepts multiple arguments, concatenates into a single string, and logs it.
 template<typename... Args>
 void RealsenseCameraWrapper::log_info(Args... args) {
     std::ostringstream oss;
