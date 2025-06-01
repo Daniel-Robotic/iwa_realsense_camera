@@ -1,6 +1,6 @@
 # iiwa_realsense_camera
 
-![License](https://img.shields.io/badge/license-Apache--2.0-green)
+[![License](https://img.shields.io/badge/license-Apache--2.0-green)](https://github.com/Daniel-Robotic/iwa_realsense_camera/blob/main/LICENSE)
 ![Docs](https://img.shields.io/badge/docs-passing-brightgreen)
 
 **iiwa_realsense_camera** is a ROS 2-compatible module for working with Intel RealSense cameras in a collaborative environment with the KUKA iiwa robot. It includes:
@@ -104,5 +104,5 @@ We would further like to acknowledge following supporters:
 |:--:|:---|
 | <img src="https://knastu.ru/media/template/logo_knastu_block.svg?v2018" alt="wellcome" width="150" align="left">  | Thanks to [Komsomolsk-on-Amur State University](https://knastu.ru/) for providing classroom facilities for the robotic complex. |
 | <img src="https://knastu.ru/media/files/page_files/education/etf/noc_prppt/Logo_NOTs_m.jpg" width="150" align="left"> | Thanks to the Scientific and Educational Center "Industrial Robotics and Advanced Industrial Technologies" for providing computing power and IntelRealsense cameras. |
-| <img src="https://rscf.ru/local/templates/rscf/static/img/logo.svg" width="150" align="left"> | The work was carried out within the framework of a grant from the Russian Science Foundation, namely, "Development and synthesis of promising multimodal adaptive algorithms and methods for controlling the behavior of collaborative robotic systems, taking into account emergency situations and extreme conditions in a non-deterministic environment" [#22-71-10093](https://rscf.ru/project/22-71-10093/) and "Development of intelligent algorithms for building collaborative robotic control systems operating in a non-deterministic environmen" [#25-21-00292](https://rscf.ru/project/25-21-00292/) |
+| <img src="https://rscf.ru/local/templates/rscf/static/img/logo.svg" width="500" align="left"> | The work was carried out within the framework of a grant from the Russian Science Foundation, namely, "Development and synthesis of promising multimodal adaptive algorithms and methods for controlling the behavior of collaborative robotic systems, taking into account emergency situations and extreme conditions in a non-deterministic environment" [#22-71-10093](https://rscf.ru/project/22-71-10093/) and "Development of intelligent algorithms for building collaborative robotic control systems operating in a non-deterministic environmen" [#25-21-00292](https://rscf.ru/project/25-21-00292/) |
 ---
