@@ -14,7 +14,7 @@ services:
       - CUDA_LAUNCH_BLOCKING=1
     privileged: true
     volumes:
-      - /home/jetson/ros2_ws/images:/images # You path
+      - /home/jetson/ros2_ws/images:/ros2_ws/images # You path
     devices:
       # RealSense D400
       - "/dev/video0:/dev/video0"
