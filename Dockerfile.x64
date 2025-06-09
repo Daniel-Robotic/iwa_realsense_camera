@@ -85,7 +85,6 @@ ENV CMAKE_PREFIX_PATH="/vcpkg_dir/ros_packages/vcpkg_installed/x64-linux/share"
 WORKDIR /ros2_ws
 SHELL ["/bin/bash", "-c"]
 RUN source /opt/ros/humble/setup.bash && \
-    rosdep init && \
     rosdep update && \
     rosdep install --from-paths src --ignore-src -r -y && \
     colcon build --merge-install \

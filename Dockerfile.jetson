@@ -98,7 +98,6 @@ SHELL ["/bin/bash", "-c"]
 ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
     CMAKE_PREFIX_PATH="/vcpkg_dir/ros_packages/vcpkg_installed/arm64-linux/share"
 RUN source /opt/ros/foxy/setup.bash && \
-    rosdep init && \
     rosdep update && \
     rosdep install --from-paths src --ignore-src -r -y && \
     colcon build --merge-install \
