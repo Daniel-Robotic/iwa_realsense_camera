@@ -3,22 +3,22 @@
 Простой launch-файл: запускает camera_handler и подсовывает JSON-файл с параметрами.
 
 Запуск:
-    ros2 launch iiwa_realsense_camera camera_handler_launch.py
-    ros2 launch iiwa_realsense_camera camera_handler_launch.py \
+    ros2 launch iiwa_realsense_bringup camera_handler_launch.py
+    ros2 launch iiwa_realsense_bringup camera_handler_launch.py \
         param_file:=/path/to/other.json  node_name:=front_cam
 """
 
-from pathlib import Path, PurePath
 import json
-from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
-from launch.substitutions import LaunchConfiguration
+from pathlib import Path, PurePath
 from launch_ros.actions import Node
+from launch import LaunchDescription
+from launch.substitutions import LaunchConfiguration
 from ament_index_python.packages import get_package_share_path
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 
 
 def default_json():
-    share = get_package_share_path("iiwa_realsense_camera")
+    share = get_package_share_path("iiwa_realsense_bringup")
     return str(PurePath(share, "config", "setting.json"))
 
 

@@ -15,14 +15,29 @@
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
-  <depend>nlohmann_json</depend>
-  <depend>realsense2</depend>
   <depend>rclcpp</depend>
-  <depend>OpenCV</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>ament_index_cpp</depend>
 
-  <build_depend>iiwa_realsense_interfaces</build_depend>
-  <exec_depend>iiwa_realsense_interfaces</exec_depend>
+  <!-- Custom message/service package -->
+  <depend>iiwa_realsense_interfaces</depend>
 
+  <!-- OpenCV and RealSense -->
+  <depend>opencv4</depend>
+  <depend>librealsense2</depend>
+
+  <!-- Python interpreter and NumPy -->
+  <exec_depend>python3</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+
+  <!-- pybind11 for C++ ↔ Python integration -->
+  <build_depend>pybind11-dev</build_depend>
+  <exec_depend>pybind11-dev</exec_depend>
+
+  <!-- Filesystem support (C++17) -->
+  <build_depend>filesystem</build_depend>
+  <exec_depend>filesystem</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

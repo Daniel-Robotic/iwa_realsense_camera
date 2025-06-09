@@ -13,6 +13,8 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - CUDA_LAUNCH_BLOCKING=1
     privileged: true
+    volumes:
+      - /home/jetson/ros2_ws/images:/images # You path
     devices:
       # RealSense D400
       - "/dev/video0:/dev/video0"

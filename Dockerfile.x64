@@ -85,7 +85,10 @@ ENV CMAKE_PREFIX_PATH="/vcpkg_dir/ros_packages/vcpkg_installed/x64-linux/share"
 WORKDIR /ros2_ws
 SHELL ["/bin/bash", "-c"]
 RUN source /opt/ros/humble/setup.bash && \
+    rosdep init && \
+    rosdep update && \
+    rosdep install --from-paths src --ignore-src -r -y && \
     colcon build --merge-install \
       --cmake-args -DCMAKE_TOOLCHAIN_FILE=/vcpkg_dir/vcpkg/scripts/buildsystems/vcpkg.cmake
 
-CMD [ "bash", "-c", "source /ros2_ws/install/setup.bash && ros2 launch iiwa_realsense_camera camera_handler_launch.py" ] 
+CMD [ "bash", "-c", "source /ros2_ws/install/setup.bash && ros2 launch iiwa_realsense_bringup camera_handler_launch.py" ] 

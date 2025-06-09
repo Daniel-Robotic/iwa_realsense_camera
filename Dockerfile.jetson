@@ -98,6 +98,9 @@ SHELL ["/bin/bash", "-c"]
 ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
     CMAKE_PREFIX_PATH="/vcpkg_dir/ros_packages/vcpkg_installed/arm64-linux/share"
 RUN source /opt/ros/foxy/setup.bash && \
+    rosdep init && \
+    rosdep update && \
+    rosdep install --from-paths src --ignore-src -r -y && \
     colcon build --merge-install \
       --cmake-args \
       -DCMAKE_TOOLCHAIN_FILE=/vcpkg_dir/vcpkg/scripts/buildsystems/vcpkg.cmake \
@@ -105,4 +108,4 @@ RUN source /opt/ros/foxy/setup.bash && \
       -DPython3_INCLUDE_DIR=/usr/include/python3.8 \
       -DPython3_LIBRARY=/usr/lib/aarch64-linux-gnu/libpython3.8.so
 
-CMD [ "bash", "-c", "source /ros2_ws/install/setup.bash && ros2 launch iiwa_realsense_camera camera_handler_launch.py" ]
+CMD [ "bash", "-c", "source /ros2_ws/install/setup.bash && ros2 launch iiwa_realsense_bringup camera_handler_launch.py" ]
