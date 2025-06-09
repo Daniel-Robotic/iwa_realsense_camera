@@ -149,6 +149,15 @@ class CameraHandler : public rclcpp::Node {
           "camera/" + camera_name_ + "/list_models",
           bind(&CameraHandler::handle_list_models, this, std::placeholders::_1, std::placeholders::_2));
 
+      save_image_service_ = this->create_service<std_srvs::srv::Trigger>(
+          "camera/" + camera_name_ + "/save_image",
+          bind(&CameraHandler::handle_save_image, this, std::placeholders::_1, std::placeholders::_2));
+          
+      clear_images_service_ = this->create_service<std_srvs::srv::Trigger>(
+          "camera/" + camera_name_ + "/clear_images",
+          bind(&CameraHandler::handle_clear_images, this, std::placeholders::_1, std::placeholders::_2));
+          
+
 
       timer_ = this->create_wall_timer(
         chrono::milliseconds(1000/fps_),
@@ -328,6 +337,80 @@ class CameraHandler : public rclcpp::Node {
         cv::imencode(".jpg", color_image_, buf);
         msg.data = buf;
         publisher_->publish(msg);
+      }
+    }
+
+    // Service callback:
+    // - Saves the current RGB frame to the "images" folder
+    // - The filename format is <index>_<hhmm>_<ddmmyyyy>.jpg (e.g., 1_1430_09062025.jpg)
+    // - Creates the folder if it does not exist
+    // - Increments the index on each save
+    // - Returns a success flag and message
+    void handle_save_image([[maybe_unused]] const shared_ptr<std_srvs::srv::Trigger::Request> request,
+                            shared_ptr<std_srvs::srv::Trigger::Response> response) {
+      try {
+        if (color_image_.empty()) {
+          response->success = false;
+          response->message = "No image available to save.";
+          return;
+        }
+    
+        std::string folder = "images";
+        if (!fs::exists(folder)) fs::create_directories(folder);
+    
+        // Get time now
+        auto now = std::chrono::system_clock::now();
+        std::time_t t = std::chrono::system_clock::to_time_t(now);
+        std::tm tm = *std::localtime(&t);
+    
+        // Create filename
+        static int counter = 1;
+        char filename[256];
+        std::snprintf(filename, sizeof(filename), "%d_%02d%02d_%02d%02d%04d.jpg", 
+                      counter++, tm.tm_hour, tm.tm_min, tm.tm_mday, tm.tm_mon+1, tm.tm_year+1900);
+        fs::path filepath = fs::path(folder) / filename;
+    
+        cv::imwrite(filepath.string(), color_image_);
+        response->success = true;
+        response->message = "Image saved: " + filepath.string();
+        RCLCPP_INFO(this->get_logger(), response->message.c_str());
+      } catch (const std::exception& e) {
+        response->success = false;
+        response->message = e.what();
+        RCLCPP_ERROR(this->get_logger(), e.what());
+      }
+    }
+
+
+    // Service callback:
+    // - Deletes all files from the "images" folder if it exists
+    // - Skips deletion if the folder is missing
+    // - Returns the number of deleted files and status message
+    void handle_clear_images([[maybe_unused]] const shared_ptr<std_srvs::srv::Trigger::Request> request,
+                              shared_ptr<std_srvs::srv::Trigger::Response> response) {
+      try {
+        std::string folder = "images";
+        if (!fs::exists(folder)) {
+          response->success = true;
+          response->message = "Directory does not exist. Nothing to delete.";
+          return;
+        }
+    
+        size_t deleted = 0;
+        for (const auto& entry : fs::directory_iterator(folder)) {
+          if (entry.is_regular_file()) {
+            fs::remove(entry);
+            ++deleted;
+          }
+        }
+    
+        response->success = true;
+        response->message = "Deleted " + std::to_string(deleted) + " files.";
+        RCLCPP_INFO(this->get_logger(), response->message.c_str());
+      } catch (const std::exception& e) {
+        response->success = false;
+        response->message = e.what();
+        RCLCPP_ERROR(this->get_logger(), e.what());
       }
     }
 
@@ -617,6 +700,9 @@ class CameraHandler : public rclcpp::Node {
     // ROS services
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr nn_detection_service_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr streaming_camera_service_;
+    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr save_image_service_;
+    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr clear_images_service_;
+
     rclcpp::Service<iiwa_realsense_interfaces::srv::CropImage>::SharedPtr crop_image_service_;
     rclcpp::Service<iiwa_realsense_interfaces::srv::ChangeModel>::SharedPtr load_model_service_;
     rclcpp::Service<iiwa_realsense_interfaces::srv::ListModels>::SharedPtr list_models_service_;
