@@ -112,7 +112,6 @@ class CameraHandler : public rclcpp::Node {
       detection_publisher_ = this->create_publisher<iiwa_realsense_interfaces::msg::Detections>(
         "camera/" + camera_name_ + "/rgb/detection", 10);
 
-      
       streaming_camera_service_ = this->create_service<std_srvs::srv::Trigger>(
         "camera/" + camera_name_ + "/streaming_camera",
         bind(&CameraHandler::handle_stop_streaming_camera, this, std::placeholders::_1, std::placeholders::_2));
@@ -157,8 +156,6 @@ class CameraHandler : public rclcpp::Node {
           "camera/" + camera_name_ + "/clear_images",
           bind(&CameraHandler::handle_clear_images, this, std::placeholders::_1, std::placeholders::_2));
           
-
-
       timer_ = this->create_wall_timer(
         chrono::milliseconds(1000/fps_),
         bind(&CameraHandler::timer_callback, this)
@@ -174,7 +171,6 @@ class CameraHandler : public rclcpp::Node {
       py::finalize_interpreter();
       camera_->stopStreaming();
     }
-
 
   private:
 
