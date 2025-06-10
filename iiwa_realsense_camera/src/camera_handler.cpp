@@ -347,29 +347,34 @@ class CameraHandler : public rclcpp::Node {
     // - Increments the index on each save
     // - Returns a success flag and message
     void handle_save_image([[maybe_unused]] const shared_ptr<std_srvs::srv::Trigger::Request> request,
-                            shared_ptr<std_srvs::srv::Trigger::Response> response) {
+      shared_ptr<std_srvs::srv::Trigger::Response> response) {
       try {
         if (color_image_.empty()) {
           response->success = false;
           response->message = "No image available to save.";
           return;
         }
-    
+
         std::string folder = "images";
         if (!fs::exists(folder)) fs::create_directories(folder);
-    
-        // Get time now
+
+        // Count existing files
+        size_t image_count = std::count_if(fs::directory_iterator(folder), fs::directory_iterator(), [](const auto& entry) {
+          return entry.is_regular_file() && entry.path().extension() == ".jpg";
+        });
+
+        // Get time
         auto now = std::chrono::system_clock::now();
         std::time_t t = std::chrono::system_clock::to_time_t(now);
         std::tm tm = *std::localtime(&t);
-    
+
         // Create filename
-        static int counter = 1;
         char filename[256];
-        std::snprintf(filename, sizeof(filename), "%d_%02d%02d_%02d%02d%04d.jpg", 
-                      counter++, tm.tm_hour, tm.tm_min, tm.tm_mday, tm.tm_mon+1, tm.tm_year+1900);
+        std::snprintf(filename, sizeof(filename), "%zu_%02d%02d_%02d%02d%04d.jpg", 
+        image_count + 1, tm.tm_hour, tm.tm_min, tm.tm_mday, tm.tm_mon + 1, tm.tm_year + 1900);
+
         fs::path filepath = fs::path(folder) / filename;
-    
+
         cv::imwrite(filepath.string(), color_image_);
         response->success = true;
         response->message = "Image saved: " + filepath.string();
@@ -380,7 +385,6 @@ class CameraHandler : public rclcpp::Node {
         RCLCPP_ERROR(this->get_logger(), e.what());
       }
     }
-
 
     // Service callback:
     // - Deletes all files from the "images" folder if it exists
