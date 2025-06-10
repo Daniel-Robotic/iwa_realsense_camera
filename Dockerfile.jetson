@@ -88,7 +88,6 @@ RUN pip3 install --upgrade pip && \
     pip3 install setuptools==58.2.0 && \
     pip3 install colcon-common-extensions numpy==1.23.5
 
-
 # Building ROS2 packages
 WORKDIR /ros2_ws/src
 COPY . /ros2_ws/src/

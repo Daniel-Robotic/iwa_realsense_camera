@@ -2,7 +2,7 @@ services:
   camera_handler:
     build:
       context: .
-      dockerfile: Dockerfile.x64
+      dockerfile: Dockerfile.jetson
     container_name: camera-handler
     network_mode: host
     restart: unless-stopped
@@ -15,6 +15,7 @@ services:
     privileged: true
     volumes:
       - /home/jetson/ros2_ws/images:/ros2_ws/images # You path
+      - /home/jetson/ros2_ws/src/iiwa_realsense_camera/models:/ros2_ws/include/share/iiwa_realsense_camera/models
     devices:
       # RealSense D400
       - "/dev/video0:/dev/video0"

@@ -38,12 +38,10 @@ def _family_from_model(model_name: str) -> FamilyT | None:
 def _resolve_model_path(task: TaskT,
                         model_name: Union[str, None],
                         model_format: str) -> Path:
-
     """
     Determine the full path to the model file.
     If model_name is not given, fallback to the first available model for the task.
     """
-    
     family: FamilyT = "yolo8"
 
     if model_name:
@@ -52,10 +50,20 @@ def _resolve_model_path(task: TaskT,
         fam = _family_from_model(model_name)
         if fam:
             family = fam
-        fname = f"{model_name}.{model_format}" if "." not in model_name else model_name
-        return MODELS_DIR / family / task / fname
 
-    # If no model name is provided, use the first .pt model found in the task directory
+        task_dir = MODELS_DIR / family / task
+        base_name = model_name.split(".")[0]
+
+        engine_path = task_dir / f"{base_name}.engine"
+        if engine_path.exists():
+            return engine_path
+
+        pt_path = task_dir / f"{base_name}.pt"
+        if pt_path.exists():
+            return pt_path
+
+        raise FileNotFoundError(f"Model '{base_name}' not found with .{model_format} or .pt in {task_dir}")
+
     task_dir = MODELS_DIR / family / task
     for p in task_dir.glob("*.pt"):
         return p
