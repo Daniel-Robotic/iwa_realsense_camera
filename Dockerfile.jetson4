@@ -12,12 +12,12 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUTF8=1 \
     PATH="/vcpkg_dir/vcpkg:${PATH}"
 
-# Setting up time and mirrors
+# Timezone and mirror
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
     sed -i 's|http://archive.ubuntu.com/ubuntu|http://mirror.yandex.ru/ubuntu|g' /etc/apt/sources.list && \
     sed -i 's|http://security.ubuntu.com/ubuntu|http://mirror.yandex.ru/ubuntu|g' /etc/apt/sources.list
 
-# Installing dependencies
+# System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     software-properties-common \
     tzdata \
@@ -48,60 +48,62 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     m4 \
     libudev-dev \
     libopencv-dev \
+    python3-colcon-common-extensions \
+    python3-argcomplete \
+    python3-rosdep \
     && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 \
     && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 100 \
     && rm -rf /var/lib/apt/lists/*
 
-# Instaling CMake
-ARG CMAKE_VERSION=3.26.4
+# CMake
+ARG CMAKE_VERSION=3.22.6
 RUN curl -sSL https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-aarch64.sh -o cmake-install.sh && \
     chmod +x cmake-install.sh && \
     ./cmake-install.sh --skip-license --prefix=/usr/local && \
     rm cmake-install.sh
 
-# Instaling vcpkg
+# vcpkg
 WORKDIR /vcpkg_dir
 COPY ./vcpkg.json /vcpkg_dir/ros_packages/vcpkg.json
 RUN git clone https://github.com/microsoft/vcpkg.git && \
     cd vcpkg && \
     git checkout 62c4a7ad6333ae50b31302c48cb3ca5712828b03 && \
     ./bootstrap-vcpkg.sh -disableMetrics && \
-    ./vcpkg install --x-manifest-root=/vcpkg_dir/ros_packages && \
+    ./vcpkg install --triplet=arm64-linux --x-manifest-root=/vcpkg_dir/ros_packages && \
     rm -rf /vcpkg_dir/vcpkg/buildtrees /vcpkg_dir/vcpkg/downloads
 
-# Instaling ROS 2 Dashing
-RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add - && \
-    echo "deb [arch=arm64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2.list && \
-    apt-get update && apt-get install -y --no-install-recommends --fix-missing \
+# ROS 2 Dashing
+RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt-key add - && \
+    echo "deb http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2.list && \
+    apt-get update && apt-get install -y --no-install-recommends \
     ros-dashing-ros-base \
     ros-dashing-rosidl-default-generators \
     ros-dashing-rosidl-default-runtime \
     ros-dashing-ament-cmake \
-    python3-colcon-common-extensions \
-    python3-argcomplete \
-    python3-rosdep2 \
     && rm -rf /var/lib/apt/lists/*
 
-# Updating pip and installing Python dependencies
-RUN pip3 install --upgrade pip && \
-    pip3 install setuptools==58.2.0 && \
-    pip3 install colcon-common-extensions numpy==1.23.5
 
-# Building ROS2 packages
+RUN rosdep init || true && rosdep update
+
+RUN pip3 install --upgrade "pip<21.0" && \
+    pip3 install "setuptools<59" && \
+    pip3 install numpy==1.19.5 colcon-common-extensions
+
+# ROS2 workspace
 WORKDIR /ros2_ws
 COPY . /ros2_ws/src/
 
 SHELL ["/bin/bash", "-c"]
 ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
     CMAKE_PREFIX_PATH="/vcpkg_dir/ros_packages/vcpkg_installed/arm64-linux/share"
+
 RUN source /opt/ros/dashing/setup.bash && \
-    rosdep update && \
     rosdep install --from-paths src --ignore-src -r -y && \
     colcon build --merge-install \
       --cmake-args \
       -DCMAKE_TOOLCHAIN_FILE=/vcpkg_dir/vcpkg/scripts/buildsystems/vcpkg.cmake \
       -DPython3_EXECUTABLE=/usr/bin/python3 \
-      -DPython3_INCLUDE_DIR=/usr/include/python3.6 \
-      -DPython3_LIBRARY=/usr/lib/aarch64-linux-gnu/libpython3.6.so
+      -DPython3_INCLUDE_DIR=/usr/include/python3.6m \
+      -DPython3_LIBRARY=/usr/lib/aarch64-linux-gnu/libpython3.6m.so
 
-CMD [ "bash", "-c", "source /ros2_ws/install/setup.bash && ros2 launch iiwa_realsense_bringup camera_handler_launch.py" ]
+CMD ["bash", "-c", "source /ros2_ws/install/setup.bash && ros2 launch iiwa_realsense_bringup camera_handler_launch.py"]
