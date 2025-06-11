@@ -16,9 +16,14 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone &
     sed -i 's|http://security.ubuntu.com/ubuntu|http://mirror.yandex.ru/ubuntu|g' /etc/apt/sources.list && \
     rm -f /etc/apt/sources.list.d/cuda-internal* || true
 
-# Установка зависимостей
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    software-properties-common \
+# Установка базовых зависимостей + gcc-10
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    software-properties-common && \
+    add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    gcc-10 g++-10 \
     tzdata \
     curl \
     gnupg2 \
@@ -50,8 +55,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Установка Python-зависимостей
-RUN pip3 install --upgrade "pip<21.0" && \
-    pip3 install "setuptools<59" numpy==1.19.5 colcon-common-extensions
+RUN pip3 install "setuptools==58.2.0" && \
+    pip3 install empy==3.3.4 && \
+    pip3 install numpy==1.19.5 && \
+    pip3 install colcon-common-extensions
 
 # Установка CMake
 ARG CMAKE_VERSION=3.22.6
@@ -60,14 +67,14 @@ RUN curl -sSL https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSIO
     ./cmake-install.sh --skip-license --prefix=/usr/local && \
     rm cmake-install.sh
 
-# Установка vcpkg
+# Установка vcpkg с использованием gcc-10
 WORKDIR /vcpkg_dir
 COPY ./vcpkg.json /vcpkg_dir/ros_packages/vcpkg.json
 RUN git clone https://github.com/microsoft/vcpkg.git && \
     cd vcpkg && \
     git checkout 62c4a7ad6333ae50b31302c48cb3ca5712828b03 && \
-    ./bootstrap-vcpkg.sh -disableMetrics && \
-    ./vcpkg install --triplet=arm64-linux --x-manifest-root=/vcpkg_dir/ros_packages && \
+    CC=gcc-10 CXX=g++-10 ./bootstrap-vcpkg.sh -disableMetrics && \
+    CC=gcc-10 CXX=g++-10 ./vcpkg install --triplet=arm64-linux --x-manifest-root=/vcpkg_dir/ros_packages && \
     rm -rf /vcpkg_dir/vcpkg/buildtrees /vcpkg_dir/vcpkg/downloads
 
 # Установка ROS 2 Dashing
