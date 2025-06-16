@@ -2,8 +2,8 @@ services:
   camera_handler:
     build:
       context: .
-      dockerfile: Dockerfile.jetson4
-    container_name: camera-handler
+      dockerfile: Dockerfile.jetpack4
+    container_name: camera-handler:jetpack4
     network_mode: host
     restart: unless-stopped
 

@@ -1,0 +1,106 @@
+FROM timongentzsch/l4t-ubuntu20-pytorch
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    TZ=Europe/Moscow \
+    VCPKG_FORCE_SYSTEM_BINARIES=1 \
+    VCPKG_DEFAULT_TRIPLET=arm64-linux \
+    PYTHONIOENCODING=utf-8 \
+    PYTHONUTF8=1 \
+    PATH="/vcpkg_dir/vcpkg:${PATH}"
+
+
+# Установка таймзоны и очистка невалидных репозиториев
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
+    sed -i 's|http://archive.ubuntu.com/ubuntu|http://mirror.yandex.ru/ubuntu|g' /etc/apt/sources.list && \
+    sed -i 's|http://security.ubuntu.com/ubuntu|http://mirror.yandex.ru/ubuntu|g' /etc/apt/sources.list && \
+    rm -f /etc/apt/sources.list.d/cuda-internal* || true
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common \
+    tzdata \
+    curl \
+    gnupg2 \
+    lsb-release \
+    wget \
+    git \
+    unzip \
+    zip \
+    python3-pip \
+    python3-dev \
+    python3-venv \
+    python3.8-dev \
+    build-essential \
+    cmake \
+    ninja-build \
+    gcc-10 \
+    g++-10 \
+    libglib2.0-0 \
+    libgl1-mesa-glx \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    pkg-config \
+    autoconf \
+    automake \
+    libtool \
+    m4 \
+    libudev-dev \
+    libopencv-dev \
+    && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 \
+    && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 100 \
+    && rm -rf /var/lib/apt/lists/*
+
+ARG CMAKE_VERSION=3.26.4
+RUN curl -sSL https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-aarch64.sh -o cmake-install.sh && \
+        chmod +x cmake-install.sh && \
+        ./cmake-install.sh --skip-license --prefix=/usr/local && \
+        rm cmake-install.sh
+
+WORKDIR /vcpkg_dir
+COPY ./vcpkg.json /vcpkg_dir/ros_packages/vcpkg.json
+RUN git clone https://github.com/microsoft/vcpkg.git && \
+    cd vcpkg && \
+    git checkout 62c4a7ad6333ae50b31302c48cb3ca5712828b03 && \
+    ./bootstrap-vcpkg.sh -disableMetrics && \
+    ./vcpkg install --x-manifest-root=/vcpkg_dir/ros_packages && \
+    rm -rf /vcpkg_dir/vcpkg/buildtrees /vcpkg_dir/vcpkg/downloads
+
+RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
+    echo "deb [arch=arm64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2.list && \
+    apt-get update && apt-get install -y --no-install-recommends --fix-missing \
+    ros-foxy-ros-base \
+    ros-foxy-rosidl-default-generators \
+    ros-foxy-rosidl-default-runtime \
+    ros-foxy-ament-cmake \
+    python3-colcon-common-extensions \
+    python3-argcomplete \
+    python3-rosdep2 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install --no-cache-dir "setuptools<60" && \
+    python3 -m pip install --no-cache-dir colcon-common-extensions && \
+    python3 -m pip install --no-cache-dir git+https//github.com/ultralytics/ultralytics.git@v8.0.20 && \
+    python3 -m pip uninstall -y opencv-python opencv-contrib-python opencv-python-headless && \
+    apt update && \
+    apt install -y python3-opencv
+
+WORKDIR /ros2_ws
+COPY . ./src
+
+SHELL ["/bin/bash", "-c"]
+ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
+    CMAKE_PREFIX_PATH="/vcpkg_dir/ros_packages/vcpkg_installed/arm64-linux/share"
+RUN source /opt/ros/foxy/setup.bash && \
+    rosdep update && \
+    rosdep install --from-paths src --ignore-src -r -y && \
+    colcon build --merge-install \
+      --cmake-args \
+      -DCMAKE_TOOLCHAIN_FILE=/vcpkg_dir/vcpkg/scripts/buildsystems/vcpkg.cmake \
+      -DPython3_EXECUTABLE=/usr/bin/python3 \
+      -DPython3_INCLUDE_DIR=/usr/include/python3.8 \
+      -DPython3_LIBRARY=/usr/lib/aarch64-linux-gnu/libpython3.8.so
+
+CMD [ "bash", "-c", "source /ros2_ws/install/setup.bash && ros2 launch iiwa_realsense_bringup camera_handler_launch.py" ]
