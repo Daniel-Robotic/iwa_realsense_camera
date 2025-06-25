@@ -70,6 +70,7 @@ RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o 
     ros-humble-rosidl-default-generators \
     ros-humble-rosidl-default-runtime \
     ros-humble-ament-cmake \
+    ros-humble-foxglove-bridge \
     python3-colcon-common-extensions \
     python3-argcomplete \
     python3-ament-package \

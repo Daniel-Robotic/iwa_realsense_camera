@@ -23,10 +23,6 @@
   <!-- Custom message/service package -->
   <depend>iiwa_realsense_interfaces</depend>
 
-  <!-- OpenCV and RealSense -->
-  <depend>opencv4</depend>
-  <depend>librealsense2</depend>
-
   <!-- Python interpreter and NumPy -->
   <exec_depend>python3</exec_depend>
   <exec_depend>python3-numpy</exec_depend>

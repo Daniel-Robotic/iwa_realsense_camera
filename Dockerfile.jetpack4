@@ -74,6 +74,7 @@ RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o 
     ros-foxy-rosidl-default-generators \
     ros-foxy-rosidl-default-runtime \
     ros-foxy-ament-cmake \
+    ros-foxy-foxglove-bridge \
     python3-colcon-common-extensions \
     python3-argcomplete \
     python3-rosdep2 \
