@@ -24,18 +24,20 @@ def default_json():
 
 def make_node(context, *_):
     cfg_path = Path(LaunchConfiguration("param_file").perform(context)).expanduser()
-    params   = json.load(cfg_path.open())
+    params = json.load(cfg_path.open())
 
-    node_name = LaunchConfiguration("node_name").perform(context) \
-                or params.pop("node_name", "camera_handler_node")
+    node_name = LaunchConfiguration("node_name").perform(context) or params.pop("node_name", "camera_handler_node")
+
+    # Добавляем в параметры полный путь к конфигу как строку
+    params["config_file"] = str(cfg_path)
 
     return [
         Node(
-            package = "iiwa_realsense_camera",
-            executable = "camera_handler",
-            name = node_name,
-            parameters = [params],
-            output = "screen"
+            package="iiwa_realsense_camera",
+            executable="camera_handler",
+            name=node_name,
+            parameters=[params],
+            output="screen"
         )
     ]
 

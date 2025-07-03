@@ -38,7 +38,7 @@ class RealsenseCameraWrapper {
         string startStreaming();
         string stopStreaming();
 
-        pair<cv::Mat, cv::Mat> getAlignedImages();
+        tuple<cv::Mat, cv::Mat, rs2_intrinsics> getAlignedImages();
         pair<vector<array<float, 3>>, vector<array<float, 2>>> getPointCloud(const rs2::depth_frame&, const rs2::video_frame);
         rs2::frameset getLatestFrameset();
 

@@ -104,13 +104,15 @@ bool RealsenseCameraWrapper::changeCameraProfile(uint16_t& width, uint16_t& heig
 }
 
 // Captures one frame and returns aligned depth and color images as OpenCV matrices.
-pair<cv::Mat, cv::Mat> RealsenseCameraWrapper::getAlignedImages() {
+tuple<cv::Mat, cv::Mat, rs2_intrinsics> RealsenseCameraWrapper::getAlignedImages() {
     if (!pipeline_started_) startStreaming();
     rs2::frameset frames = pipeline_.wait_for_frames();
     frames = align_.process(frames);
 
     rs2::depth_frame depth_frame = frames.get_depth_frame();
     rs2::video_frame color_frame = frames.get_color_frame();
+    rs2::video_stream_profile color_profile = color_frame.get_profile().as<rs2::video_stream_profile>();
+    rs2_intrinsics intrinsics = color_profile.get_intrinsics(); 
 
     if (!depth_frame || !color_frame) {
         string message = "[ERROR] Invalid frames received";
@@ -123,7 +125,7 @@ pair<cv::Mat, cv::Mat> RealsenseCameraWrapper::getAlignedImages() {
     cv::Mat color_image(cv::Size(color_frame.get_width(), color_frame.get_height()),
                         CV_8UC3, (void*)color_frame.get_data(), cv::Mat::AUTO_STEP);
 
-    return {depth_image, color_image};
+    return {depth_image, color_image, intrinsics};
 }
 
 // Gets the most recent aligned frameset.
